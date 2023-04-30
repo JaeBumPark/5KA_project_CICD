@@ -31,53 +31,41 @@ pipeline {
         echo "namespace: ${params.namespace}"
       }
     }
-    stage('Dokcer pod deploy') {
+    stage('Kaniko pod deploy') {
       steps {
         podTemplate(yaml: '''
           apiVersion: v1
           kind: Pod
           spec:
-            serviceAccountName: jenkins-admin
-            volumes:
-            - name: docker-socket
-              emptyDir: {}
             containers:
-            - name: docker
-              image: docker
-              readinessProbe:
-                exec:
-                  command: [sh, -c, "ls -S /var/run/docker.sock"]
-              command:
-              - sleep
-              args:
-              - 99d
-              volumeMounts:
-              - name: docker-socket
-                mountPath: /var/run
-            - name: docker-daemon
-              image: docker:dind
-              securityContext:
-                privileged: true
-              volumeMounts:
-              - name: docker-socket
-                mountPath: /var/run
-            - name: kubectl
-              image: bitnami/kubectl:1.26.0
-              command: 
-              - sleep
-              args: 
-              - 99d
             - name: maven
-              image: maven:3.8.1-jdk-8
-              command:
-              - sleep
-              args:
-              - 99d
+              image: maven:3-openjdk-8
+              command: ['sleep']
+              args: ['infinity']
+            - name: kaniko
+              image: gcr.io/kaniko-project/executor:debug
+              command: ['sleep']
+              args: ['infinity']
+              volumeMounts:
+              - name: registry-credentials
+                mountPath: /kaniko/.docker
+              - name: aws-credentials
+                mountPath: /root/.aws/credentials
+                subPath: credentials
+            volumes:
+            - name: registry-credentials
+              secret:
+                secretName: regcred
+                items: 
+                - key: .dockerconfigjson
+                  path: config.json
+            - name: aws-credentials
+              secret:
+                secretName: aws-credentials
         ''') {
           node(POD_LABEL) {
 
-
-            container('docker') {
+            container('kaniko') {
               script {
                 stage('Clone Repository') {
                   checkout scm
@@ -89,18 +77,18 @@ pipeline {
                 stage('Maven Build') {
                 sh 'mvn clean install'
                  }
-      
               }        
              } 
             
-
   
                 stage('Push Docker image') {
-                  def appname = params.namespace
-                  def app = docker.build("nexus.ihp001.dev/${appname}") // Docker 이미지를 빌드합니다.
-                  docker.withRegistry('https://nexus.ihp001.dev', 'nexus_cre') {
-                      app.push("${env.BUILD_NUMBER}") // 이미지를 특정 태그로 푸시합니다.
-                      app.push("latest") // 이미지를 최신 버전으로 푸시합니다.
+                  sh "echo {$env.WORKSPACE}"
+                  sh "executor --dockerfile=Dockerfile \
+                    --context=dir://${env.WORKSPACE} \
+                    --cache=true \   
+                    --cache-repo=nexus.ihp001.dev/kaniko-test/cache \
+                    --destination=nexus.ihp001.dev/kaniko-test:${env.BUILD_NUMBER} \
+                    --destination=nexus.ihp001.dev/kaniko-test:latest"
                     }
                   }
                 }
@@ -108,7 +96,7 @@ pipeline {
             }
           }
         }
-      }
+      
 
     stage('5ka Manifest Repository change') {
         steps {
@@ -142,5 +130,3 @@ pipeline {
             }
         }
     }    
-  }
-}
