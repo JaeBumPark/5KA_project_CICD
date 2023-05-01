@@ -82,7 +82,7 @@ pipeline {
             
   
                 stage('Push Docker image') {
-                  sh "echo {$env.WORKSPACE}"
+                  sh "echo {$env.WORKSPACE}" 
                   sh "executor --dockerfile=Dockerfile \
                     --context=dir://${env.WORKSPACE} \
                     --cache=true \   
