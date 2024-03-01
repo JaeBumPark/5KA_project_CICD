@@ -58,7 +58,6 @@
 
 - 애플리케이션의 배포와 운영에 관련된 모든 요소를 코드화하여 확장성, 안정성, 보안성을 보장하는 GitOps-based CI/CD pipeline 구축
 - Application Source code Repo 와  Deployment code ****Repo로 애플리케이션/ 배포 manifest code를 나누어 Git 형상 관리
-- Deployment code ****Repo 내의 manifest file은 Helm chart 형식으로 작성하여 배포의 유연성과 수월한 버전 관리를 보장
 
 ### 3-2. Jenkins Master/agent를 나누어 Jenkis job 실행
 
